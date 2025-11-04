@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'presentation/providers/playlist_provider.dart';
 import 'presentation/pages/home_page.dart';
+import 'presentation/theme/app_theme.dart';
 
 void main() {
   runApp(const MyApp());
@@ -9,6 +10,7 @@ void main() {
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
@@ -17,9 +19,8 @@ class MyApp extends StatelessWidget {
       ],
       child: MaterialApp(
         title: 'Playlist Scraper',
-        theme: ThemeData(
-          primarySwatch: Colors.blue,
-        ),
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.darkTheme,
         home: const HomePage(),
       ),
     );

@@ -8,25 +8,43 @@ class RemoteScraper {
   final SimpleHttpClient client;
   RemoteScraper(this.client);
 
+
   Future<PlaylistModel> scrapePlaylist(String url) async {
     final html = await client.getPage(url);
+    // print(html);
     final document = parser.parse(html);
 
-    // Extract playlist metadata from music-detail-header
     String title = 'Unknown Playlist';
     String description = '';
     String imageUrl = '';
 
-    final detailHeader = document.querySelector('music-detail-header');
-    if (detailHeader != null) {
-      title = detailHeader.attributes['headline'] ??
-          detailHeader.attributes['primary-text'] ??
-          'Unknown Playlist';
-      description = detailHeader.attributes['secondary-text'] ?? '';
-      imageUrl = detailHeader.attributes['image-src'] ?? '';
+    final titleElement = document.querySelector('head > title');
+    if (titleElement != null) {
+      title = titleElement.text
+          .replaceAll('Playlist on Amazon Music Unlimited', '')
+          .replaceAll('Playlist auf Amazon Music Unlimited', '')
+          .trim();
     }
 
-    // Extract tracks from music-image-row elements
+    final descriptionElement =
+    document.querySelector('meta[name="description"]');
+    if (descriptionElement != null) {
+      description = descriptionElement.attributes['content'] ?? '';
+
+      String toRemove = "Listen to the $title playlist with Amazon Music Unlimited.";
+
+      description = description.replaceAll(toRemove, '').trim();
+
+    }
+
+    final imgElement =
+    document.querySelector('music-detail-header music-image img');
+    if (imgElement != null) {
+      imageUrl = imgElement.attributes['data-src'] ??
+          imgElement.attributes['src'] ??
+          '';
+    }
+
     final tracks = <TrackModel>[];
     final trackElements = document.querySelectorAll('music-image-row[data-key]');
 
@@ -54,33 +72,27 @@ class RemoteScraper {
     );
   }
 
+
   TrackModel? _parseTrackElement(dynamic element) {
-    // Get track name from primary-text attribute
     final trackName = element.attributes['primary-text'] ?? '';
     if (trackName.isEmpty) return null;
 
-    // Get artist from secondary-text-1 attribute
     final artist = element.attributes['secondary-text-1'] ?? '';
 
-    // Get album from secondary-text-2 attribute
     final album = element.attributes['secondary-text-2'] ?? '';
 
-    // Get image URL from image-src attribute
     final imageUrl = element.attributes['image-src'] ?? '';
 
-    // Get duration from the duration span inside
     String duration = '';
     final durationElement = element.querySelector('.col4 music-link span');
     if (durationElement != null) {
       duration = durationElement.text.trim();
     }
 
-    // If duration not found in span, try to extract from col4
     if (duration.isEmpty) {
       final col4 = element.querySelector('.col4');
       if (col4 != null) {
         final text = col4.text.trim();
-        // Duration pattern: MM:SS
         final durationMatch = RegExp(r'\d{1,2}:\d{2}').firstMatch(text);
         if (durationMatch != null) {
           duration = durationMatch.group(0) ?? '';
@@ -98,7 +110,6 @@ class RemoteScraper {
   }
 
   String _cleanText(String text) {
-    // Remove HTML entities and extra whitespace
     return text
         .replaceAll('&amp;', '&')
         .replaceAll('&#39;', "'")

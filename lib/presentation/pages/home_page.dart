@@ -16,7 +16,7 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     final provider = Provider.of<PlaylistProvider>(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('Playlist Scraper — Minimal')),
+      appBar: AppBar(title: const Text('Get your playlist')),
       body: Padding(
         padding: const EdgeInsets.all(12.0),
         child: Column(
