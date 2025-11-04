@@ -8,70 +8,94 @@ class RemoteScraper {
   final SimpleHttpClient client;
   RemoteScraper(this.client);
 
-
   Future<PlaylistModel> scrapePlaylist(String url) async {
-    final html = await client.getPage(url);
-    // print(html);
+    if (!url.startsWith('https://music.amazon.com/playlists/')) {
+      throw InvalidUrlException();
+    }
+
+    final String html;
+    try {
+      html = await client.getPage(url);
+    } on Exception catch (e) {
+      if (e is ScraperException) {
+        rethrow;
+      }
+      throw NetworkException(e.toString());
+    }
+
     final document = parser.parse(html);
 
     String title = 'Unknown Playlist';
     String description = '';
     String imageUrl = '';
 
-    final titleElement = document.querySelector('head > title');
-    if (titleElement != null) {
-      title = titleElement.text
-          .replaceAll('Playlist on Amazon Music Unlimited', '')
-          .replaceAll('Playlist auf Amazon Music Unlimited', '')
-          .trim();
-    }
-
-    final descriptionElement =
-    document.querySelector('meta[name="description"]');
-    if (descriptionElement != null) {
-      description = descriptionElement.attributes['content'] ?? '';
-
-      String toRemove = "Listen to the $title playlist with Amazon Music Unlimited.";
-
-      description = description.replaceAll(toRemove, '').trim();
-
-    }
-
-    final imgElement =
-    document.querySelector('music-detail-header music-image img');
-    if (imgElement != null) {
-      imageUrl = imgElement.attributes['data-src'] ??
-          imgElement.attributes['src'] ??
-          '';
-    }
-
-    final tracks = <TrackModel>[];
-    final trackElements = document.querySelectorAll('music-image-row[data-key]');
-
-    for (var trackElement in trackElements) {
-      try {
-        final trackData = _parseTrackElement(trackElement);
-        if (trackData != null) {
-          tracks.add(trackData);
-        }
-      } catch (e) {
-        print('Error parsing track: $e');
-        continue;
+    try {
+      final titleElement = document.querySelector('head > title');
+      if (titleElement != null) {
+        title = titleElement.text
+            .replaceAll('Playlist on Amazon Music Unlimited', '')
+            .replaceAll('Playlist auf Amazon Music Unlimited', '')
+            .trim();
       }
-    }
 
-    if (tracks.isEmpty) {
-      throw ScraperException('No tracks found in playlist');
-    }
+      final descriptionElement =
+      document.querySelector('meta[name="description"]');
+      if (descriptionElement != null) {
+        description = descriptionElement.attributes['content'] ?? '';
 
-    return PlaylistModel.fromParsedData(
-      title: title,
-      description: description,
-      imageUrl: imageUrl,
-      tracks: tracks,
-    );
+        String toRemove =
+            "Listen to the $title playlist with Amazon Music Unlimited.";
+
+        description = description.replaceAll(toRemove, '').trim();
+      }
+
+      final imgElement =
+      document.querySelector('music-detail-header music-image img');
+      if (imgElement != null) {
+        imageUrl = imgElement.attributes['data-src'] ??
+            imgElement.attributes['src'] ??
+            '';
+      }
+
+      final tracks = <TrackModel>[];
+      final trackElements =
+      document.querySelectorAll('music-image-row[data-key]');
+
+      for (var trackElement in trackElements) {
+        try {
+          final trackData = _parseTrackElement(trackElement);
+          if (trackData != null) {
+            tracks.add(trackData);
+          }
+        } catch (e) {
+          print('Error parsing track: $e');
+          continue;
+        }
+      }
+
+      if (tracks.isEmpty) {
+        if (title == 'Unknown Playlist' || title.contains('Amazon Music')) {
+          throw PlaylistNotFoundException();
+        }
+        print('Warning: Playlist parsed but no tracks found.');
+        throw ParsingException(
+            'Не вдалося знайти треки в плейлисті. Можливо, він порожній або приватний.');
+      }
+
+      return PlaylistModel.fromParsedData(
+        title: title,
+        description: description,
+        imageUrl: imageUrl,
+        tracks: tracks,
+      );
+    } catch (e) {
+      if (e is ScraperException) {
+        rethrow;
+      }
+      print('Parsing error: $e');
+      throw ParsingException();
+    }
   }
-
 
   TrackModel? _parseTrackElement(dynamic element) {
     final trackName = element.attributes['primary-text'] ?? '';

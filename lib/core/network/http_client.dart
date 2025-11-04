@@ -1,5 +1,7 @@
 import 'package:http/http.dart' as http;
 
+import '../error/exceptions.dart';
+
 
 class SimpleHttpClient {
   final http.Client _client = http.Client();
@@ -22,9 +24,11 @@ class SimpleHttpClient {
 
     if (response.statusCode == 200) {
       return response.body;
+    } else if (response.statusCode == 404) {
+      throw PlaylistNotFoundException();
     } else {
-      throw Exception(
-          'HTTP ${response.statusCode}: ${response.reasonPhrase}');
+      throw NetworkException(
+          'Помилка завантаження сторінки: ${response.statusCode}');
     }
   }
 }

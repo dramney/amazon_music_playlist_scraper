@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import '../../data/datasources/remote_scraper.dart';
 import '../../data/repositories/playlist_repository_impl.dart';
 import '../../core/network/http_client.dart';
@@ -30,7 +30,7 @@ class PlaylistProvider with ChangeNotifier {
       error = e.message;
       state = LoadingState.error;
     } catch (e) {
-      error = e.toString();
+      error = 'Виникла невідома помилка: $e';
       state = LoadingState.error;
     }
     notifyListeners();
